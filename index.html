@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<style>
+    body{width: 100vw; height: 100vh;}
+    .backlink {stroke: black; opacity:0.05; }
+    .flickeringlink {stroke: black }
+    .node {stroke: white; stroke-width: 0px;}
+</style>
+
+<body>
+
+<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+
+<script>
+
+    var width = 960, height = 500, colors = d3.scale.category10();
+
+    var n = 150, // number of nodes
+            m = 150, // number of links
+            charge = -200;
+
+    var svg = d3.select("body").append("svg")
+            .attr("width", "100%")
+            .attr("height", "100%")
+            .on("mousedown", create);
+
+    create();
+
+    function create () {
+        svg.selectAll(".link, .node").remove();
+        randomGraph(n, m, charge);
+    }
+
+    function randomGraph (n, m, charge) { //creates a random graph on n nodes and m links
+        var nodes = d3.range(n).map(Object),
+                list  = randomChoose(unorderedPairs(d3.range(n)), m),
+                links = list.map(function (a) { return {source: a[0], target: a[1]} });
+
+        var force = d3.layout.force()
+                .size([width, height])
+                .nodes(nodes)
+                .links(links)
+                .charge(charge)
+                .start();
+
+        for (var i = 0; i < 100; i++) {
+            force.tick();
+        }
+
+        force.on("tick", tick);
+
+        var svgLinks = svg.selectAll(".backlink").data(links)
+                .enter().append("line")
+                .attr("stroke-width",3)
+                .attr("class", "backlink");
+
+        var svgNodes = svg.selectAll(".node").data(nodes)
+                .enter().append("circle")
+                .attr("class", "node")
+                .attr("r", 6)
+                .style("fill", "#0E0552");
+
+
+
+        links.forEach(function (l) {
+            l.p = Math.random();
+            l.p += 0.2;
+        });
+
+        var flickeringLinks = svg.selectAll(".flickeringlink").data(links)
+                        .enter().append("line")
+                        .attr("opacity",0.1)
+                        .attr("stroke-width",1)
+                        .attr("class", "flickeringlink")
+
+                ;
+
+
+        flickeringLinks.call(restartFliker);
+
+        function restartFliker(selection){
+
+           selection.transition().duration(600).attrTween("opacity",function tween(d, i, a) {
+                return function(t){
+                    return t < d.p ? 1 : 0;
+                }
+            }).each("end",function(){d3.select(this).call(restartFliker)});
+        }
+
+        function tick () {
+            svgNodes
+                    .attr("cx", function(d) { return d.x })
+                    .attr("cy", function(d) { return d.y });
+
+            svgLinks
+                    .attr("x1", function(d) { return d.source.x })
+                    .attr("y1", function(d) { return d.source.y })
+                    .attr("x2", function(d) { return d.target.x })
+                    .attr("y2", function(d) { return d.target.y });
+
+            flickeringLinks
+                    .attr("x1", function(d) { return d.source.x })
+                    .attr("y1", function(d) { return d.source.y })
+                    .attr("x2", function(d) { return d.target.x })
+                    .attr("y2", function(d) { return d.target.y });
+        }
+    }
+
+    function randomChoose (s, k) { // returns a random k element subset of s
+        var a = [], i = -1, j;
+        while (++i < k) {
+            j = Math.floor(Math.random() * s.length);
+            a.push(s.splice(j, 1)[0]);
+        };
+        return a;
+    }
+
+    function unorderedPairs (s) { // returns the list of all unordered pairs from s
+        var i = -1, a = [], j;
+        while (++i < s.length) {
+            j = i;
+            while (++j < s.length) a.push([s[i],s[j]])
+        };
+        return a;
+    }
+
+</script>
